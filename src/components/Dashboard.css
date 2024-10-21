@@ -35,3 +35,113 @@
 .ms-auto {
     margin-left: 0;
 }
+
+.home-content {
+    display: flex;
+    width: 100%;
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.following-section {
+    width: 200px;
+    margin-right: 20px;
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    position: sticky;
+    top: 70px;
+    height: calc(100vh - 90px);
+    overflow-y: auto;
+}
+
+.following-section h3 {
+    margin-bottom: 10px;
+}
+
+.following-section ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+.following-section li {
+    margin-bottom: 5px;
+}
+
+.plant-feed {
+    flex-grow: 1;
+    max-width: calc(100% - 220px);
+}
+
+.post-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.plant-post {
+    transition: transform 0.3s ease-in-out;
+}
+
+.plant-post:hover {
+    transform: translateY(-5px);
+}
+
+.btn {
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: scale(1.05);
+}
+
+.card-img-top {
+    height: 200px;
+    object-fit: cover;
+}
+
+.navbar-container {
+    padding-top: 56px;
+}
+
+.main-content {
+    margin-bottom: 60px;
+}
+
+.comment-box {
+    padding: 15px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.comment-box textarea {
+    width: 100%;
+    height: 80px;
+    margin-bottom: 10px;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.comment-box button {
+    float: right;
+}
+
+@media (max-width: 768px) {
+    .home-content {
+        flex-direction: column;
+    }
+
+    .following-section {
+        width: 100%;
+        margin-right: 0;
+        margin-bottom: 20px;
+        height: auto;
+        position: static;
+    }
+
+    .plant-feed {
+        max-width: 100%;
+    }
+}
