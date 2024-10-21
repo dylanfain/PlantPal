@@ -8,6 +8,7 @@ import Login from "./Login";
 import PrivateRoute from "./PrivateRoute";
 import ForgotPassword from "./ForgotPassword";
 import UpdateProfile from "./UpdateProfile";
+import Settings from "./Settings";
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
               {/* user specific routes - utilize Private Route component */}
               <Route path="/" element={<PrivateRoute component={Dashboard} />} />
               <Route path="/update-profile" element={<PrivateRoute component={UpdateProfile} />} />
+              <Route path="/settings" element={<PrivateRoute component={Settings} />} />
 
               {/* Public routes */}
               {/* Authentication Pages and open to all (not user specific pages) */}
