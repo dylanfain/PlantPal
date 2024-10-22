@@ -1,20 +1,19 @@
 import React, { useState } from "react"
-import { Card, Button, Alert } from "react-bootstrap"
+import { Card, Button, Alert, Container } from "react-bootstrap"
 import { useAuth } from "../contexts/AuthContext"
-import { Link, useNavigate  } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 
 export default function Settings() {
   const [error, setError] = useState("")
   const { currentUser, logout } = useAuth()
-  const navigate = useNavigate ()
+  const navigate = useNavigate()
 
-//   handles log out functionality and connects to firebase fn.
   async function handleLogout() {
     setError("")
 
     try {
       await logout()
-      navigate.push("/login")
+      navigate("/login")
     } catch {
       setError("Failed to log out")
     }
@@ -22,16 +21,12 @@ export default function Settings() {
 
   return (
     <>
-      <Card>
-        <Card.Body>
-          <h2 className="text-center mb-4">Profile</h2>
-          {error && <Alert variant="danger">{error}</Alert>}
-          <strong>Email:</strong> {currentUser.email}
-          <Link to="/update-profile" className="btn btn-primary w-100 mt-3">
-            Update Profile
-          </Link>
-        </Card.Body>
-      </Card>
+      <h2 className="text-center mb-4">Profile</h2>
+      {error && <Alert variant="danger">{error}</Alert>}
+      <strong>Email:</strong> {currentUser.email}
+      <Link to="/update-profile" className="btn btn-primary w-100 mt-3">
+        Update Profile
+      </Link>
       <div className="w-100 text-center mt-2">
         <Button variant="link" onClick={handleLogout}>
           Log Out

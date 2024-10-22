@@ -52,8 +52,28 @@ function App() {
 
           {/* Private routes */}
           <Route path="/" element={<PrivateRoute component={Dashboard} />} />
-          <Route path="/update-profile" element={<PrivateRoute component={UpdateProfile} />} />
-          <Route path="/settings" element={<PrivateRoute component={Settings} />} />
+          <Route path="/update-profile" element={
+          <Container className="d-flex align-items-center justify-content-center" style={{ minHeight: "100vh" }}>
+            <div className="w-100" style={{ maxWidth: "400px" }}>
+              <Card>
+                <Card.Body>
+                  <PrivateRoute component={UpdateProfile} />
+                </Card.Body>
+              </Card>
+            </div>
+          </Container>
+        } />
+        <Route path="/settings" element={
+          <Container className="d-flex align-items-center justify-content-center" style={{ minHeight: "100vh" }}>
+            <div className="w-100" style={{ maxWidth: "400px" }}>
+              <Card>
+                <Card.Body>
+                  <PrivateRoute component={Settings} />
+                </Card.Body>
+              </Card>
+            </div>
+          </Container>
+        } />
         </Routes>
       </AuthProvider>
     </Router>
