@@ -1,39 +1,82 @@
 import React from "react";
-import Signup from "./Signup";
-import { Container } from "react-bootstrap";
 import { AuthProvider } from "../contexts/AuthContext";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import { Container, Card } from "react-bootstrap";
 import Dashboard from "./Dashboard";
 import Login from "./Login";
+import Signup from "./Signup";
 import PrivateRoute from "./PrivateRoute";
 import ForgotPassword from "./ForgotPassword";
 import UpdateProfile from "./UpdateProfile";
+import Settings from "./Settings";
 
 function App() {
   return (
-    <Container
-      className="d-flex align-items-center justify-content-center"
-      style={{ minHeight: "100vh" }}
-    >
-      <div className="w-100" style={{ maxWidth: "400px" }}>
-        <Router>
-          <AuthProvider>
-            <Routes>
-              {/* Private routes */}
-              {/* user specific routes - utilize Private Route component */}
-              <Route path="/" element={<PrivateRoute component={Dashboard} />} />
-              <Route path="/update-profile" element={<PrivateRoute component={UpdateProfile} />} />
+    <Router>
+      <AuthProvider>
+        <Routes>
+          {/* Public routes in card container */}
+          <Route path="/login" element={
+            <Container className="d-flex align-items-center justify-content-center" style={{ minHeight: "100vh" }}>
+              <div className="w-100" style={{ maxWidth: "400px" }}>
+                <Card>
+                  <Card.Body>
+                    <Login />
+                  </Card.Body>
+                </Card>
+              </div>
+            </Container>
+          } />
+          <Route path="/signup" element={
+            <Container className="d-flex align-items-center justify-content-center" style={{ minHeight: "100vh" }}>
+              <div className="w-100" style={{ maxWidth: "400px" }}>
+                <Card>
+                  <Card.Body>
+                    <Signup />
+                  </Card.Body>
+                </Card>
+              </div>
+            </Container>
+          } />
+          <Route path="/forgot-password" element={
+            <Container className="d-flex align-items-center justify-content-center" style={{ minHeight: "100vh" }}>
+              <div className="w-100" style={{ maxWidth: "400px" }}>
+                <Card>
+                  <Card.Body>
+                    <ForgotPassword />
+                  </Card.Body>
+                </Card>
+              </div>
+            </Container>
+          } />
 
-              {/* Public routes */}
-              {/* Authentication Pages and open to all (not user specific pages) */}
-              <Route path="/signup" element={<Signup />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-            </Routes>
-          </AuthProvider>
-        </Router>
-      </div>
-    </Container>
+          {/* Private routes */}
+          <Route path="/" element={<PrivateRoute component={Dashboard} />} />
+          <Route path="/update-profile" element={
+          <Container className="d-flex align-items-center justify-content-center" style={{ minHeight: "100vh" }}>
+            <div className="w-100" style={{ maxWidth: "400px" }}>
+              <Card>
+                <Card.Body>
+                  <PrivateRoute component={UpdateProfile} />
+                </Card.Body>
+              </Card>
+            </div>
+          </Container>
+        } />
+        <Route path="/settings" element={
+          <Container className="d-flex align-items-center justify-content-center" style={{ minHeight: "100vh" }}>
+            <div className="w-100" style={{ maxWidth: "400px" }}>
+              <Card>
+                <Card.Body>
+                  <PrivateRoute component={Settings} />
+                </Card.Body>
+              </Card>
+            </div>
+          </Container>
+        } />
+        </Routes>
+      </AuthProvider>
+    </Router>
   );
 }
 
