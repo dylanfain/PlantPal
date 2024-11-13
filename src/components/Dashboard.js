@@ -122,10 +122,12 @@ export default function Dashboard() {
                         />
                         <Button variant="outline-success">Search</Button>
                     </Form>
-                    
                     <Navbar.Toggle aria-controls="basic-navbar-nav" />
                     <Navbar.Collapse id="basic-navbar-nav">
                       <Nav className="ms-auto">
+                        <Link to="/post">
+                          <Button aria-controls="basic-navbar-nav">Post</Button>
+                        </Link>
                         <Nav.Link 
                             as={Link} 
                             to="/" 
