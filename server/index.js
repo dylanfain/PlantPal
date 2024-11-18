@@ -43,10 +43,11 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
       return res.status(400).json({ error: 'Title, caption, and userId are required' });
   }
 
+  const image = req.file ? req.file.buffer : null;
   try {
       const newPost = new Post({
           title,
-          image: image ? Buffer.from(image, 'base64') : null, // Convert image to Buffer
+          image, // Convert image to Buffer
           caption,
           likes: likes || 0,
           contentType,
@@ -90,7 +91,7 @@ app.get('/api/posts/:userId', async (req, res) => {
 });
 
 
-// Route to comment on a post - Works!
+// Route to comment on a post - NOT WORKING YET
 app.post('/api/posts/:postId/comment', async (req, res) => {
   const { postId } = req.params;
   const { text } = req.body;
