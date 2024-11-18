@@ -43,6 +43,8 @@ export default function Post() {
     const [caption, setCaption] = useState("");
     const { currentUser } = useAuth();
     const navigate = useNavigate();
+    // Create a state to hold the image preview URL
+    const [imagePreview, setImagePreview] = useState(null);
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -61,6 +63,16 @@ export default function Post() {
             currentUser.uid,
             navigate // Pass navigate as an argument to createPost
         );
+    };
+
+    // Handle the image file change and create a preview URL
+    const handleImageChange = (e) => {
+        const selectedImage = e.target.files[0];
+        setImage(selectedImage);
+
+        // Create a preview URL and store it in state
+        const previewURL = URL.createObjectURL(selectedImage);
+        setImagePreview(previewURL);
     };
 
     return (
@@ -93,10 +105,22 @@ export default function Post() {
                             <Form.Label>Image</Form.Label>
                             <Form.Control
                                 type="file"
-                                onChange={(e) => setImage(e.target.files[0])}
+                                onChange={handleImageChange} // Update the image when selected
                                 required
                             />
                         </Form.Group>
+
+                        {/* Display the image preview */}
+                        {imagePreview && (
+                            <div className="mt-3">
+                                <h5>Image Preview:</h5>
+                                <img
+                                    src={imagePreview}
+                                    alt="Selected"
+                                    style={{ width: "100%", maxHeight: "300px", objectFit: "cover" }}
+                                />
+                            </div>
+                        )}
                         <Button className="mt-3" variant="primary" type="submit">
                             Create Post
                         </Button>
