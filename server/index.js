@@ -16,24 +16,23 @@ app.use(express.json());
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
-mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+//connection to database
+mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('Connected to MongoDB'))
   .catch((err) => console.error('MongoDB connection error:', err));
 
-// Sample route
-app.get('/', (req, res) => {
-  res.send('Hello from the backend!');
-});
+//requests all posts in DB - not used yet/working
+// app.get('/api/posts', (req, res) => {
+//   const { userId } = req.query;
+//   if (userId) {
+//     // Fetch posts based on userId
+//     res.json({ posts: [] }); // Sample response
+//   } else {
+//     res.status(400).json({ error: 'User ID is required' });
+//   }
+// });
 
-app.get('/api/posts/', async (req, res) => {
-    try {
-        const posts = await Post.find();
-        res.json(posts);
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to fetch posts'});
-    }
-});
-
+//creates a plant post from a user - Works!
 app.post('/api/posts', upload.single('image'), async (req, res) => {  
   console.log("Request body:", req.body);
   console.log("Request file:", req.file); 
@@ -47,7 +46,7 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
   try {
       const newPost = new Post({
           title,
-          image: req.file ? req.file.buffer : null, // req.file contains the uploaded file
+          image: image ? Buffer.from(image, 'base64') : null, // Convert image to Buffer
           caption,
           likes: likes || 0,
           contentType,
@@ -63,6 +62,64 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
 });
 
 
+// retrieves all posts from a specific user - NOT WORKING YET
+app.get('/api/posts/:userId', async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const posts = await Post.find({ userId }).sort({ createdAt: -1 });
+
+    // Convert the binary image data to a base64 string for each post
+    const postsWithBase64Images = posts.map((post) => {
+      if (post.image && post.image.buffer) {
+        // Convert the binary data (ArrayBuffer) to a Buffer and then to Base64
+        const base64Image = Buffer.from(post.image.buffer).toString('base64');
+        return {
+          ...post._doc,
+          image: base64Image, // Use the Base64 string
+        };
+      }
+      return post;
+    });
+
+    res.json(postsWithBase64Images);
+  } catch (error) {
+    console.error('Failed to fetch posts:', error);
+    res.status(500).json({ error: 'Failed to fetch posts' });
+  }
+});
+
+
+// Route to comment on a post - Works!
+app.post('/api/posts/:postId/comment', async (req, res) => {
+  const { postId } = req.params;
+  const { text } = req.body;
+
+  if (!text || text.trim() === '') {
+    return res.status(400).json({ message: 'Comment text is required' });
+  }
+
+  try {
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    // Create a new comment
+    const newComment = new Comment({
+      postId: postId,
+      text: text,
+      userId: req.body.userId, // Pass the userId from request body (or use session/auth)
+    });
+
+    await newComment.save();
+
+    res.status(201).json({ message: 'Comment added', comment: newComment });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error adding comment' });
+  }
+});
 
 
 // Start the server
