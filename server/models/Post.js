@@ -7,7 +7,8 @@ const postSchema = new mongoose.Schema({
   likes: { type: Number, require: true},
   createdAt: { type: Date, default: Date.now },
   contentType: { type: String, required: true },
-  userId: { type: String, required: true }
+  userId: { type: String, required: true },
+  comments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Comment' }]
 });
 
 const Post = mongoose.model('Post', postSchema, 'photos');

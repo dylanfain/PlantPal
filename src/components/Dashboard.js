@@ -37,8 +37,8 @@ const HomeContent = () => {
     }
   };
 
-  fetchPosts();
-}, [userID]);
+    fetchPosts();
+  }, [userID]);
 
   // Like a post
   const handleLike = async (postId) => {
@@ -58,23 +58,17 @@ const HomeContent = () => {
   };
 
   // Submit comment
-  const submitComment = async () => {
-    if (newComment.trim() !== '') {
-      try {
-        await axios.post(`/api/posts/${commentingPostId}/comment`, {
-          text: newComment,
-          userId: userID, // Make sure you're passing the user's ID here
-        });
-        setPosts(posts.map((post) =>
-          post._id === commentingPostId
-            ? { ...post, comments: [...post.comments, newComment] }
-            : post
-        ));
-        setNewComment('');
-        setCommentingPostId(null);
-      } catch (error) {
-        console.error('Error adding comment:', error);
-      }
+  const submitComment = async (postId, newComment, userId) => {
+    try {
+      const response = await axios.post(`http://localhost:5000/api/posts/${postId}/comment`, {
+        text: newComment,
+        author: userId
+      });
+  
+      console.log(response.data.message); // "Comment added successfully"
+      return response.data.post; // The updated post with comments
+    } catch (error) {
+      console.error('Error adding comment:', error);
     }
   };
 
@@ -112,45 +106,63 @@ const HomeContent = () => {
 
           {posts.map((post) => (
             <div key={post._id} className="plant-post card mb-3 animate__animated animate__fadeIn">
+              {/* Post Image */}
               <img
-                src={`data:${post.contentType};base64,${post.image}`} // This should work for base64 encoded images
+                src={`data:${post.contentType};base64,${post.image}`}
                 className="card-img-top"
                 alt={post.title}
               />
+
+              {/* Post Content */}
               <div className="card-body">
                 <h5 className="card-title">{post.title}</h5>
                 <p className="card-text">{post.caption}</p>
+
+                {/* Like Button */}
                 <button className="btn btn-success" onClick={() => handleLike(post._id)}>
                   Like ({post.likes})
                 </button>
+
+                {/* Comment Button */}
                 <button className="btn btn-outline-secondary ml-2" onClick={() => handleComment(post._id)}>
                   Comment ({post.comments?.length || 0})
                 </button>
+
+                {/* Comments Section */}
                 {post.comments?.length > 0 && (
                   <div className="comments-section mt-3">
                     <h6>Comments:</h6>
                     <ul className="list-unstyled">
-                      {post.comments.map((comment, index) => (
-                        <li key={index} className="mb-2">{comment}</li>
+                      {post.comments.map((comment) => (
+                        <li key={comment._id} className="mb-2">
+                          <strong>{comment.author?.username || 'Anonymous'}:</strong> {comment.text}
+                        </li>
                       ))}
                     </ul>
                   </div>
                 )}
               </div>
+
+              {/* Comment Input Box */}
               {commentingPostId === post._id && (
-                <div className="comment-box">
+                <div className="comment-box mt-3">
                   <textarea
+                    className="form-control"
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
                     placeholder="Write a comment..."
                   />
-                  <button className="btn btn-success" onClick={submitComment}>
+                  <button
+                    className="btn btn-success mt-2"
+                    onClick={() => submitComment(post._id)}
+                  >
                     Submit
                   </button>
                 </div>
               )}
             </div>
           ))}
+
         </div>
       </div>
     </div>
@@ -245,7 +257,7 @@ export default function Dashboard() {
             <div className="main-body">
                 {isHome && <HomeContent />}
             </div>
-            <div className="footer" fixed="bottom">Placeholder</div>
+            {/* <div className="footer" fixed="bottom">Placeholder</div> */}
         </div>
     );
 }

@@ -4,6 +4,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const multer = require('multer');
 const Post = require('./models/Post');
+const Comment = require('./models/Comment');
 
 dotenv.config();
 
@@ -63,7 +64,7 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
 });
 
 
-// retrieves all posts from a specific user - NOT WORKING YET
+// retrieves all posts from a specific user - Works!
 app.get('/api/posts/:userId', async (req, res) => {
   const { userId } = req.params;
 
@@ -92,36 +93,30 @@ app.get('/api/posts/:userId', async (req, res) => {
 
 
 // Route to comment on a post - NOT WORKING YET
-app.post('/api/posts/:postId/comment', async (req, res) => {
-  const { postId } = req.params;
-  const { text } = req.body;
-
-  if (!text || text.trim() === '') {
-    return res.status(400).json({ message: 'Comment text is required' });
-  }
+app.post('/api/posts/:id/comment', async (req, res) => {
+  const { id } = req.params; // Post ID
+  const { text, author } = req.body; // Comment text and author ID
 
   try {
-    const post = await Post.findById(postId);
+    // Create a new comment
+    const newComment = await Comment.create({ text, author });
+
+    // Find the post and add the comment to it
+    const post = await Post.findByIdAndUpdate(
+      id,
+      { $push: { comments: newComment._id } },
+      { new: true }
+    ).populate('comments');
+
     if (!post) {
-      return res.status(404).json({ message: 'Post not found' });
+      return res.status(404).json({ error: 'Post not found' });
     }
 
-    // Create a new comment
-    const newComment = new Comment({
-      postId: postId,
-      text: text,
-      userId: req.body.userId, // Pass the userId from request body (or use session/auth)
-    });
-
-    await newComment.save();
-
-    res.status(201).json({ message: 'Comment added', comment: newComment });
+    res.status(200).json({ message: 'Comment added successfully', post });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Error adding comment' });
+    res.status(500).json({ error: 'Error adding comment', details: error.message });
   }
 });
-
 
 // Start the server
 app.listen(port, () => {
