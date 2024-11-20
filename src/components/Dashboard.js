@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import axios from "../config/axios";
 import { Button, Navbar, Container, Nav, NavDropdown, Form, FormControl, Card } from "react-bootstrap";
 import { useAuth } from "../contexts/AuthContext";
 import { Link, useNavigate, useLocation } from "react-router-dom";
@@ -12,6 +12,20 @@ const HomeContent = () => {
   const [commentingPostId, setCommentingPostId] = useState(null);
   const [newComment, setNewComment] = useState('');
   const userID = currentUser.uid;
+  const [following, setFollowing] = useState([]);
+
+  useEffect(() => {
+    const fetchFollowing = async () => {
+      try {
+        const response = await axios.get(`/api/users/${currentUser.uid}/following`);
+        setFollowing(response.data);
+      } catch (error) {
+        console.error('Error fetching following list:', error);
+      }
+    };
+
+    fetchFollowing();
+  }, [currentUser.uid]);
 
   // Fetch posts from the server
   useEffect(() => {
@@ -79,9 +93,13 @@ const HomeContent = () => {
       <div className="following-section">
         <h3>Following</h3>
         <ul>
-          <li>User 1</li>
-          <li>User 2</li>
-          <li>User 3</li>
+          {following.length > 0 ? (
+            following.map(userId => (
+              <li key={userId}>{userId}</li>
+            ))
+          ) : (
+            <li>No users followed yet</li>
+          )}
         </ul>
       </div>
       <div className="plant-feed">
@@ -208,7 +226,7 @@ export default function Dashboard() {
                     <Navbar.Toggle aria-controls="basic-navbar-nav" />
                     <Navbar.Collapse id="basic-navbar-nav">
                       <Nav className="ms-auto">
-                        {/* Post Button Styled Like Other Links */}
+                        {/* Post Button */}
                         <Nav.Link 
                           as={Link} 
                           to="/post" 
@@ -223,16 +241,26 @@ export default function Dashboard() {
                           as={Link} 
                           to="/" 
                           className={`navbar-text ${isHome ? "active" : ""}`} 
-                          style={{ color: "inherit" }}
+                          style={{ color: isHome ? "green" : "inherit" }}
                         >
                           Home
+                        </Nav.Link>
+
+                        {/* Feed Link */}
+                        <Nav.Link 
+                          as={Link} 
+                          to="/feed" 
+                          className={`navbar-text ${currentLocation.pathname === "/feed" ? "active" : ""}`}
+                          style={{ color: currentLocation.pathname === "/feed" ? "green" : "inherit" }}
+                        >
+                          Feed
                         </Nav.Link>
 
                         {/* Marketplace Link */}
                         <Nav.Link 
                           as={Link} 
                           to="/marketplace" 
-                          className={`navbar-text ${currentLocation.pathname === "/marketplace" ? "active" : ""}`} 
+                          className={`navbar-text ${currentLocation.pathname === "/marketplace" ? "active" : ""}`}
                           style={{ color: currentLocation.pathname === "/marketplace" ? "green" : "inherit" }}
                         >
                           Marketplace

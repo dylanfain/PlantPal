@@ -1,14 +1,36 @@
 const mongoose = require('mongoose');
 
 const postSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  image: { type: Buffer, required: true },
-  caption: { type: String, required: true},
-  likes: { type: Number, require: true},
-  createdAt: { type: Date, default: Date.now },
-  contentType: { type: String, required: true },
-  userId: { type: String, required: true },
-  comments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Comment' }]
+  userId: {
+    type: String,
+    required: true
+  },
+  title: {
+    type: String,
+    required: true
+  },
+  caption: {
+    type: String,
+    required: true
+  },
+  image: Buffer,
+  contentType: String,
+  likes: {
+    type: Number,
+    default: 0
+  },
+  comments: [{
+    text: String,
+    author: String,
+    timestamp: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
 });
 
 const Post = mongoose.model('Post', postSchema, 'photos');

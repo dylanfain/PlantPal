@@ -10,6 +10,7 @@ import PrivateRoute from "./PrivateRoute";
 import ForgotPassword from "./ForgotPassword";
 import UpdateProfile from "./UpdateProfile";
 import Settings from "./Settings";
+import Feed from "./Feed";
 
 function App() {
   return (
@@ -86,6 +87,7 @@ function App() {
             </div>
           </Container>
         } />
+        <Route path="/feed" element={<PrivateRoute component={Feed} />} />
         </Routes>
       </AuthProvider>
     </Router>
