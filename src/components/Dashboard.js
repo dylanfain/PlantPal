@@ -71,6 +71,17 @@ const HomeContent = () => {
     setCommentingPostId(postId);
   };
 
+  // Handle deletion
+  const handleDelete = async (postId) => {
+    try {
+      await axios.delete(`http://localhost:5000/api/posts/${postId}`);
+      setPosts(posts.filter((post) => post._id != postId));
+      console.log('Post deleted successfully');
+    } catch(error) {
+      console.error('Error deleting post:', error.response?.data || error.message);
+    }
+  };
+
   // Submit comment
   const submitComment = async (postId, newComment, userId) => {
     try {
@@ -144,6 +155,11 @@ const HomeContent = () => {
                 {/* Comment Button */}
                 <button className="btn btn-outline-secondary ml-2" onClick={() => handleComment(post._id)}>
                   Comment ({post.comments?.length || 0})
+                </button>
+                
+                {/* Delete Button */}
+                <button className="btn btn-danger" onClick={() => handleDelete(post._id)}>
+                  Delete
                 </button>
 
                 {/* Comments Section */}

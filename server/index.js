@@ -291,3 +291,17 @@ app.get('/api/debug/status', (req, res) => {
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
+
+app.delete('/api/posts/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const deletedPost = await Post.findByIdAndDelete(id);
+    if (!deletedPost) {
+      return res.status(404).json({error: 'Post not found'});
+    }
+    res.status(200).json({ message: 'Post deleted successfully', post: deletedPost});
+  } catch (error) {
+    console.error('Failed to delete post: ', error);
+    res.status(500).json({ error: 'Failed to delete post' });
+  }
+})
