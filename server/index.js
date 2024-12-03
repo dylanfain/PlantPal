@@ -11,10 +11,10 @@ const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 5001;
+const port = 5050;
 
 app.use(cors({
-    origin: ['http://localhost:3000', 'http://localhost:5001'],
+    origin: ['http://localhost:5050'],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
@@ -26,12 +26,22 @@ const upload = multer({ storage: storage });
 
 //connection to database
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => {
-    console.log('Connected to MongoDB');
-    console.log('Database name:', mongoose.connection.name);
-    console.log('Connected to:', process.env.MONGODB_URI);
+  .then(async () => {
+    console.log('Connected to MongoDB successfully');
+    const db = mongoose.connection.db;
+    const collections = await db.listCollections().toArray();
+    console.log('Available collections:', collections.map(c => c.name));
+    
+    // Check posts collection
+    const posts = await Post.find({});
+    console.log('Number of posts in database:', posts.length);
+    if (posts.length > 0) {
+        console.log('Sample post:', posts[0]);
+    }
   })
-  .catch((err) => console.error('MongoDB connection error:', err));
+  .catch((err) => {
+    console.error('MongoDB connection error:', err);
+  });
 
 //requests all posts in DB - not used yet/working
 // app.get('/api/posts', (req, res) => {
@@ -45,63 +55,44 @@ mongoose.connect(process.env.MONGODB_URI)
 // });
 
 //creates a plant post from a user - Works!
-app.post('/api/posts', upload.single('image'), async (req, res) => {  
-  console.log("Creating new post");
-  console.log("Request body:", req.body);
-  console.log("Request file:", req.file); 
+app.post('/api/posts', upload.single('image'), async (req, res) => {
+    try {
+        console.log('\n=== CREATE POST REQUEST ===');
+        const { title, caption, userId } = req.body;
+        
+        // Get user's email
+        const user = await User.findOne({ firebaseId: userId });
+        console.log('1. Found user:', {
+            firebaseId: user?.firebaseId,
+            email: user?.email
+        });
 
-  const { title, caption, userId } = req.body;
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
 
-  if (!title || !caption || !userId) {
-      console.log("Missing required fields:", { title, caption, userId });
-      return res.status(400).json({ error: 'Title, caption, and userId are required' });
-  }
+        const post = new Post({
+            title,
+            caption,
+            userId: user.firebaseId,
+            userEmail: user.email,
+            image: req.file ? req.file.buffer : null,
+            contentType: req.file ? req.file.mimetype : null,
+            likes: 0
+        });
 
-  try {
-      let imageData = null;
-      let contentType = null;
+        await post.save();
+        console.log('2. Created post:', {
+            title: post.title,
+            userId: post.userId,
+            userEmail: post.userEmail
+        });
 
-      if (req.file) {
-          imageData = req.file.buffer;
-          contentType = req.file.mimetype;
-      } else if (req.body.image && req.body.image.startsWith('http')) {
-          console.log('Fetching image from URL:', req.body.image);
-          const response = await fetch(req.body.image);
-          imageData = await response.buffer();
-          contentType = response.headers.get('content-type');
-          console.log('Image fetched successfully');
-      }
-
-      const newPost = new Post({
-          title,
-          image: imageData,
-          caption,
-          likes: 0,
-          contentType: contentType || 'image/jpeg',
-          userId,
-          createdAt: new Date()
-      });
-
-      console.log("Attempting to save post to database");
-      const savedPost = await newPost.save();
-      console.log("Post saved successfully with ID:", savedPost._id);
-      console.log("Post details:", {
-          title: savedPost.title,
-          userId: savedPost.userId,
-          hasImage: !!savedPost.image
-      });
-
-      // Convert image buffer to base64 for response
-      const postResponse = savedPost.toObject();
-      if (postResponse.image) {
-          postResponse.image = postResponse.image.toString('base64');
-      }
-
-      res.status(201).json(postResponse);
-  } catch (error) {
-      console.error('Failed to create post: ', error);
-      res.status(400).json({ error: 'Failed to create post: ' + error.message });
-  }
+        res.json(post);
+    } catch (error) {
+        console.error('Error creating post:', error);
+        res.status(500).json({ error: 'Error creating post' });
+    }
 });
 
 
@@ -161,139 +152,220 @@ app.post('/api/posts/:id/comment', async (req, res) => {
 
 // Create or update user
 app.post('/api/users', async (req, res) => {
-  const { firebaseId, email } = req.body;
-  try {
-    let user = await User.findOne({ firebaseId });
-    if (!user) {
-      user = new User({ firebaseId, email });
-      await user.save();
+    const { firebaseId, email } = req.body;
+    try {
+        console.log('\n=== CREATE USER START ===');
+        console.log('1. Creating user:', { firebaseId, email });
+        
+        let user = await User.findOne({ firebaseId });
+        console.log('2. Existing user:', user);
+        
+        if (!user) {
+            user = new User({
+                firebaseId,
+                email,  // Make sure email is included
+                following: []
+            });
+            await user.save();
+            console.log('3. New user created:', user);
+        } else if (!user.email && email) {
+            // Update existing user with email if missing
+            user.email = email;
+            await user.save();
+            console.log('3. Updated existing user with email:', user);
+        }
+        
+        console.log('=== CREATE USER END ===\n');
+        res.json(user);
+    } catch (error) {
+        console.error('Error creating user:', error);
+        res.status(500).json({ error: 'Error creating user' });
     }
-    res.json(user);
-  } catch (error) {
-    res.status(500).json({ error: 'Error creating user' });
-  }
 });
 
-// Follow a user
+// Move the discover users endpoint BEFORE the :userId route
+app.get('/api/users/discover/:userId', async (req, res) => {
+    try {
+        console.log('\n=== DISCOVER USERS DEBUG ===');
+        console.log('1. Current user ID:', req.params.userId);
+        
+        // Get all users
+        const allUsers = await User.find({});
+        console.log('2. All users in database:', allUsers);
+        
+        // Get users except current user
+        const discoverableUsers = await User.find({ 
+            firebaseId: { $ne: req.params.userId }
+        });
+        
+        console.log('3. Discoverable users:', discoverableUsers);
+        console.log('4. Number of discoverable users:', discoverableUsers.length);
+        
+        // Log each discoverable user
+        discoverableUsers.forEach((user, index) => {
+            console.log(`5. User ${index + 1}:`, {
+                firebaseId: user.firebaseId,
+                email: user.email,
+                following: user.following
+            });
+        });
+        
+        console.log('=== DISCOVER USERS DEBUG END ===\n');
+        
+        res.json(discoverableUsers);
+    } catch (error) {
+        console.log('ERROR in discover users:', error);
+        res.status(500).json({ error: 'Error fetching users' });
+    }
+});
+
+// Add follow/unfollow endpoints
 app.post('/api/users/follow', async (req, res) => {
-  const { followerId, followingId } = req.body;
-  try {
-    // Add to follower's following list
-    await User.findOneAndUpdate(
-      { firebaseId: followerId },
-      { $addToSet: { following: followingId } }
-    );
-    
-    // Add to following's followers list
-    await User.findOneAndUpdate(
-      { firebaseId: followingId },
-      { $addToSet: { followers: followerId } }
-    );
-    
-    res.json({ message: 'Successfully followed user' });
-  } catch (error) {
-    res.status(500).json({ error: 'Error following user' });
-  }
+    try {
+        console.log('\n=== FOLLOW REQUEST ===');
+        const { followerId, followingId } = req.body;
+        console.log('1. Request:', { followerId, followingId });
+        
+        // Find both users
+        const follower = await User.findOne({ firebaseId: followerId });
+        const following = await User.findOne({ firebaseId: followingId });
+        
+        if (!follower || !following) {
+            return res.status(404).json({ error: 'One or both users not found' });
+        }
+        
+        // Add to following list
+        if (!follower.following.includes(followingId)) {
+            follower.following.push(followingId);
+            await follower.save();
+        }
+        
+        // Add to followers list
+        if (!following.followers.includes(followerId)) {
+            following.followers.push(followerId);
+            await following.save();
+        }
+        
+        res.json({ 
+            message: 'Successfully followed user',
+            following: follower.following,
+            followers: following.followers
+        });
+    } catch (error) {
+        console.error('Follow error:', error);
+        res.status(500).json({ error: error.message || 'Error following user' });
+    }
 });
 
-// Unfollow a user
 app.post('/api/users/unfollow', async (req, res) => {
-  const { followerId, followingId } = req.body;
-  try {
-    // Remove from follower's following list
-    await User.findOneAndUpdate(
-      { firebaseId: followerId },
-      { $pull: { following: followingId } }
-    );
-    
-    // Remove from following's followers list
-    await User.findOneAndUpdate(
-      { firebaseId: followingId },
-      { $pull: { followers: followerId } }
-    );
-    
-    res.json({ message: 'Successfully unfollowed user' });
-  } catch (error) {
-    res.status(500).json({ error: 'Error unfollowing user' });
-  }
+    try {
+        const { followerId, followingId } = req.body;
+        const user = await User.findOne({ firebaseId: followerId });
+        
+        if (user) {
+            user.following = user.following.filter(id => id !== followingId);
+            await user.save();
+        }
+        
+        res.json({ message: 'Successfully unfollowed user' });
+    } catch (error) {
+        res.status(500).json({ error: 'Error unfollowing user' });
+    }
+});
+
+// Then the general user routes
+app.get('/api/users/:userId/following', async (req, res) => {
+    try {
+        console.log('\n=== FOLLOWING REQUEST START ===');
+        console.log('1. Fetching following list for user:', req.params.userId);
+        
+        const user = await User.findOne({ firebaseId: req.params.userId });
+        console.log('2. Found user:', user ? 'Yes' : 'No');
+        
+        if (!user) {
+            console.log('3. Creating new user');
+            const newUser = new User({
+                firebaseId: req.params.userId,
+                following: []
+            });
+            await newUser.save();
+            console.log('4. New user created');
+            return res.json([]);
+        }
+        
+        console.log('3. User following list:', user.following || []);
+        console.log('=== FOLLOWING REQUEST END ===\n');
+        
+        res.json(user.following || []);
+    } catch (error) {
+        console.error('ERROR in following endpoint:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+        });
+        res.status(500).json({ error: 'Error fetching following list' });
+    }
 });
 
 // Update the feed endpoint to be more efficient
 app.get('/api/feed/:userId', async (req, res) => {
-  try {
-    console.log('\n=== FEED REQUEST START ===');
-    const userId = req.params.userId;
-    
-    console.log('1. Request received for userId:', userId);
+    try {
+        console.log('\n=== FEED REQUEST START ===');
+        console.log('1. Current user:', req.params.userId);
+        
+        // Get user's following list
+        const user = await User.findOne({ firebaseId: req.params.userId });
+        console.log('2. User details:', {
+            email: user?.email,
+            following: user?.following
+        });
+        
+        // Get posts only from followed users
+        const allPosts = await Post.find({});
+        console.log('3. All posts:', allPosts.map(p => ({
+            id: p._id,
+            title: p.title,
+            userId: p.userId,
+            createdAt: p.createdAt
+        })));
+        
+        // Filter posts to only show from followed users
+        const filteredPosts = allPosts.filter(post => {
+            console.log('Checking post:', {
+                postUserId: post.userId,
+                following: user?.following,
+                isIncluded: user?.following.includes(post.userId)
+            });
+            return user?.following.includes(post.userId);
+        });
 
-    // Find user and their following list
-    const user = await User.findOne({ firebaseId: userId }).lean();
-    console.log('2. User search result:', user ? {
-      id: user._id,
-      following: user.following || []
-    } : 'Not found');
-    
-    if (!user) {
-      return res.json({ posts: [], totalPages: 0, currentPage: 1 });
+        console.log('4. Filtered posts:', filteredPosts.map(p => ({
+            id: p._id,
+            title: p.title,
+            userId: p.userId,
+            createdAt: p.createdAt
+        })));
+        
+        // Convert images for filtered posts
+        const postsWithImages = filteredPosts.map(post => {
+            if (post.image && post.image.buffer) {
+                const base64Image = Buffer.from(post.image.buffer).toString('base64');
+                return {
+                    ...post._doc,
+                    image: base64Image,
+                };
+            }
+            return post;
+        });
+
+        console.log('5. Number of posts being sent:', postsWithImages.length);
+        console.log('=== FEED REQUEST END ===\n');
+
+        res.json({ posts: postsWithImages });
+    } catch (error) {
+        console.error('Error in feed endpoint:', error);
+        res.status(500).json({ error: 'Error fetching feed' });
     }
-
-    // Get posts only from followed users and self
-    const postsQuery = {
-      userId: { $in: [...(user.following || []), userId] }
-    };
-
-    // Get only the 2 most recent posts
-    const posts = await Post.find(postsQuery)
-      .sort({ createdAt: -1 })  // Sort by newest first
-      .limit(2)  // Only get 2 posts
-      .lean();
-
-    console.log(`4. Found ${posts.length} posts`);
-
-    // Process posts
-    const processedPosts = posts.map(post => {
-      try {
-        if (post.image) {
-          post.image = post.image.toString('base64');
-          console.log(`Processed image for post: ${post.title}`);
-        }
-        return post;
-      } catch (error) {
-        console.error(`Error processing post ${post._id}:`, error);
-        return { ...post, image: null };
-      }
-    });
-
-    console.log('5. Successfully processed posts');
-    res.json({
-      posts: processedPosts,
-      totalPages: 1,  // Since we're only showing 2 posts
-      currentPage: 1
-    });
-    console.log('=== FEED REQUEST END ===\n');
-  } catch (error) {
-    console.error('Feed endpoint error:', {
-      name: error.name,
-      message: error.message
-    });
-    res.status(500).json({ 
-      error: 'Error fetching feed', 
-      details: error.message 
-    });
-  }
-});
-
-// Get user's following list
-app.get('/api/users/:userId/following', async (req, res) => {
-  try {
-    const user = await User.findOne({ firebaseId: req.params.userId });
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    res.json(user.following);
-  } catch (error) {
-    res.status(500).json({ error: 'Error fetching following list' });
-  }
 });
 
 // Add this debug endpoint right after your existing routes
@@ -326,6 +398,166 @@ app.post('/api/debug/cleanup', async (req, res) => {
     console.error('Cleanup error:', error);
     res.status(500).json({ error: 'Failed to clean up database' });
   }
+});
+
+// Add this debug endpoint to see raw posts data
+app.get('/api/debug/raw-posts', async (req, res) => {
+    try {
+        const posts = await Post.find({});
+        res.json({
+            count: posts.length,
+            posts: posts.map(post => ({
+                id: post._id,
+                title: post.title,
+                caption: post.caption,
+                hasImage: !!post.image,
+                contentType: post.contentType
+            }))
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Add this debug endpoint to create test users
+app.post('/api/debug/create-test-users', async (req, res) => {
+    try {
+        const testUsers = [
+            {
+                firebaseId: 'test-user-1',
+                email: 'testuser1@example.com',
+                following: []
+            },
+            {
+                firebaseId: 'test-user-2',
+                email: 'testuser2@example.com',
+                following: []
+            },
+            {
+                firebaseId: 'test-user-3',
+                email: 'testuser3@example.com',
+                following: []
+            }
+        ];
+
+        // Create the test users
+        for (const userData of testUsers) {
+            const existingUser = await User.findOne({ firebaseId: userData.firebaseId });
+            if (!existingUser) {
+                const user = new User(userData);
+                await user.save();
+                console.log('Created test user:', userData.email);
+            }
+        }
+
+        // Get all users to confirm creation
+        const allUsers = await User.find({});
+        res.json({
+            message: 'Test users created successfully',
+            users: allUsers
+        });
+    } catch (error) {
+        console.error('Error creating test users:', error);
+        res.status(500).json({ error: 'Failed to create test users' });
+    }
+});
+
+// Add this simple test endpoint
+app.get('/api/test/create-users', async (req, res) => {
+    try {
+        console.log('Creating test users...');
+        
+        const testUsers = [
+            { firebaseId: 'test1', email: 'test1@example.com' },
+            { firebaseId: 'test2', email: 'test2@example.com' },
+            { firebaseId: 'test3', email: 'test3@example.com' }
+        ];
+
+        for (const userData of testUsers) {
+            const exists = await User.findOne({ firebaseId: userData.firebaseId });
+            if (!exists) {
+                const user = new User({
+                    ...userData,
+                    following: []
+                });
+                await user.save();
+                console.log('Created user:', userData.email);
+            }
+        }
+
+        const allUsers = await User.find({});
+        console.log('All users:', allUsers);
+        
+        res.json({ message: 'Test users created', users: allUsers });
+    } catch (error) {
+        console.log('Error:', error);
+        res.status(500).json({ error: 'Failed to create test users' });
+    }
+});
+
+// Add this debug endpoint to create a test post
+app.post('/api/debug/create-test-post', async (req, res) => {
+    try {
+        const testPost = new Post({
+            title: 'Test Plant',
+            caption: 'This is a test plant post',
+            userId: 'test-user-1',
+            likes: 0,
+            contentType: 'text/plain'
+        });
+        await testPost.save();
+        res.json({ message: 'Test post created', post: testPost });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to create test post' });
+    }
+});
+
+// Add this debug endpoint to check posts
+app.get('/api/debug/check-posts', async (req, res) => {
+    try {
+        console.log('\n=== CHECKING POSTS ===');
+        const posts = await Post.find({});
+        console.log('Found posts:', posts.length);
+        console.log('Post details:', posts.map(p => ({
+            id: p._id,
+            title: p.title,
+            userId: p.userId,
+            hasImage: !!p.image
+        })));
+        console.log('=== CHECK COMPLETE ===\n');
+        
+        res.json({
+            count: posts.length,
+            posts: posts.map(p => ({
+                id: p._id,
+                title: p.title,
+                userId: p.userId,
+                hasImage: !!p.image
+            }))
+        });
+    } catch (error) {
+        console.error('Error checking posts:', error);
+        res.status(500).json({ error: 'Failed to check posts' });
+    }
+});
+
+// Add this endpoint to update user email
+app.post('/api/users/update-email', async (req, res) => {
+    try {
+        const { firebaseId, email } = req.body;
+        const user = await User.findOne({ firebaseId });
+        
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        user.email = email;
+        await user.save();
+        
+        res.json({ message: 'Email updated successfully', user });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 // Start the server

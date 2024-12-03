@@ -11,12 +11,10 @@ const userSchema = new mongoose.Schema({
     required: true
   },
   following: [{
-    type: String,  // Store Firebase UIDs of followed users
-    ref: 'User'
+    type: String
   }],
   followers: [{
-    type: String,  // Store Firebase UIDs of followers
-    ref: 'User'
+    type: String
   }],
   createdAt: {
     type: Date,

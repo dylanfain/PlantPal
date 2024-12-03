@@ -39,6 +39,12 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(authInstance, (user) => {
+      console.log('Auth state changed:', {
+        uid: user?.uid,
+        email: user?.email,
+        isLoggedIn: !!user,
+        timestamp: new Date().toISOString()
+      });
       setCurrentUser(user);
       setLoading(false);
     });

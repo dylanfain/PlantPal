@@ -2,37 +2,29 @@ import React, { useState } from "react";
 import { Button, Form, Card, Container } from "react-bootstrap";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
-async function createPost(postDetails, firebaseUserID, navigate) {
-    const formData = new FormData(); // Capitalize FormData
-
-    formData.append("title", postDetails.title);
-    formData.append("caption", postDetails.caption);
-    formData.append("likes", postDetails.likes);
-    formData.append("contentType", postDetails.contentType);
-    formData.append("userId", firebaseUserID);
-
-    if (postDetails.image) {
-        formData.append("image", postDetails.image);
-    }
-
-    console.log("Form Data: ", formData); // Add this for debugging
-
+async function createPost(formData, navigate) {
     try {
-        const response = await fetch("http://localhost:5000/api/posts", {
-            method: "POST",
-            body: formData,
+        console.log('Creating post with formData:', {
+            title: formData.get('title'),
+            caption: formData.get('caption'),
+            userId: formData.get('userId')
+        });
+
+        const response = await axios.post("http://localhost:5050/api/posts", formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
         });
         
-        if (response.ok) {
-            const data = await response.json();
-            console.log("Post created:", data);
-            navigate("/"); // Use navigate to redirect on success
-        } else {
-            console.error("Failed to create post.");
-        }
+        console.log("Post created response:", response.data);
+        navigate("/");
     } catch (error) {
-        console.error("Error creating a post:", error);
+        console.error("Error creating post:", {
+            message: error.message,
+            response: error.response?.data
+        });
     }
 }
 
@@ -52,17 +44,29 @@ export default function Post() {
             alert("Not logged in.");
             return;
         }
-        createPost(
-            {
-                title,
-                image,
-                caption,
-                likes: 0,
-                contentType: image ? image.type : ""
-            },
-            currentUser.uid,
-            navigate // Pass navigate as an argument to createPost
-        );
+
+        console.log('Current user in handleSubmit:', {
+            uid: currentUser.uid,
+            email: currentUser.email,
+            metadata: currentUser.metadata,  // This will show when the user was created/last signed in
+            providerId: currentUser.providerId
+        });
+
+        const formData = new FormData();
+        formData.append("title", title);
+        formData.append("caption", caption);
+        formData.append("userId", currentUser.uid);
+        if (image) {
+            formData.append("image", image);
+        }
+
+        console.log('Form data being sent:', {
+            title: formData.get('title'),
+            caption: formData.get('caption'),
+            userId: formData.get('userId')
+        });
+
+        createPost(formData, navigate);
     };
 
     // Handle the image file change and create a preview URL

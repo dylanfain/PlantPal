@@ -13,6 +13,7 @@ const HomeContent = () => {
   const [newComment, setNewComment] = useState('');
   const userID = currentUser.uid;
   const [following, setFollowing] = useState([]);
+  const [discoverUsers, setDiscoverUsers] = useState([]);
 
   useEffect(() => {
     const fetchFollowing = async () => {
@@ -27,32 +28,38 @@ const HomeContent = () => {
     fetchFollowing();
   }, [currentUser.uid]);
 
+  // Add discover users fetch
+  useEffect(() => {
+    const fetchDiscoverUsers = async () => {
+      try {
+        const response = await axios.get(`/api/users/discover/${currentUser.uid}`);
+        setDiscoverUsers(response.data);
+      } catch (error) {
+        console.error('Error fetching discover users:', error);
+      }
+    };
+
+    fetchDiscoverUsers();
+  }, [currentUser.uid]);
+
   // Fetch posts from the server
   useEffect(() => {
-  const fetchPosts = async () => {
-    if (!userID) {
-      console.error('No userID found');
-      return;
+    const fetchPosts = async () => {
+      try {
+        // Get user's posts
+        const userPostsResponse = await axios.get(`/api/posts/${currentUser.uid}`);
+        setPosts(userPostsResponse.data);
+      } catch (error) {
+        console.error("Error fetching posts:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (currentUser) {
+      fetchPosts();
     }
-
-    console.log(`Fetching posts for userID: ${userID}`);
-
-    try {
-      // Update the URL to include userId as a path parameter
-      const response = await axios.get(`http://localhost:5000/api/posts/${userID}`);
-      const sortedPosts = response.data.sort(
-        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-      );
-      setPosts(sortedPosts);
-    } catch (error) {
-      console.error('Error fetching posts:', error.response?.data || error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-    fetchPosts();
-  }, [userID]);
+  }, [currentUser]);
 
   // Like a post
   const handleLike = async (postId) => {
@@ -86,20 +93,98 @@ const HomeContent = () => {
     }
   };
 
+  const handleFollow = async (userId) => {
+    try {
+        await axios.post('/api/users/follow', {
+            followerId: currentUser.uid,
+            followingId: userId
+        });
+        
+        // Refresh lists
+        const [followingResponse, discoverResponse] = await Promise.all([
+            axios.get(`/api/users/${currentUser.uid}/following`),
+            axios.get(`/api/users/discover/${currentUser.uid}`)
+        ]);
+        
+        setFollowing(followingResponse.data);
+        setDiscoverUsers(discoverResponse.data);
+    } catch (error) {
+        console.error('Error following user:', error);
+    }
+  };
+
+  const handleUnfollow = async (userId) => {
+    try {
+        await axios.post('/api/users/unfollow', {
+            followerId: currentUser.uid,
+            followingId: userId
+        });
+        
+        // Refresh lists
+        const [followingResponse, discoverResponse] = await Promise.all([
+            axios.get(`/api/users/${currentUser.uid}/following`),
+            axios.get(`/api/users/discover/${currentUser.uid}`)
+        ]);
+        
+        setFollowing(followingResponse.data);
+        setDiscoverUsers(discoverResponse.data);
+    } catch (error) {
+        console.error('Error unfollowing user:', error);
+    }
+  };
+
+  const getEmailFromUserId = (userId) => {
+    const user = discoverUsers.find(u => u.firebaseId === userId);
+    return user?.email || 'Unknown User';
+  };
+
   if (loading) return <div>Loading...</div>;
 
   return (
     <div className="home-content">
       <div className="following-section">
         <h3>Following</h3>
-        <ul>
+        <ul className="list-unstyled">
           {following.length > 0 ? (
             following.map(userId => (
-              <li key={userId}>{userId}</li>
+              <li key={userId} className="mb-2">
+                <div className="d-flex justify-content-between align-items-center">
+                  <div className="text-truncate me-2">
+                    {discoverUsers.find(u => u.firebaseId === userId)?.email || userId}
+                  </div>
+                  <Button 
+                    variant="outline-danger" 
+                    size="sm"
+                    onClick={() => handleUnfollow(userId)}
+                  >
+                    Unfollow
+                  </Button>
+                </div>
+              </li>
             ))
           ) : (
             <li>No users followed yet</li>
           )}
+        </ul>
+
+        <h3 className="mt-4">Discover Users</h3>
+        <ul className="list-unstyled">
+          {discoverUsers.map(user => (
+            !following.includes(user.firebaseId) && user.email && (
+              <li key={user.firebaseId} className="mb-2">
+                <div className="d-flex justify-content-between align-items-center">
+                  <div className="text-truncate me-2">{user.email}</div>
+                  <Button 
+                    variant="outline-success" 
+                    size="sm"
+                    onClick={() => handleFollow(user.firebaseId)}
+                  >
+                    Follow
+                  </Button>
+                </div>
+              </li>
+            )
+          ))}
         </ul>
       </div>
       <div className="plant-feed">
@@ -124,6 +209,15 @@ const HomeContent = () => {
 
           {posts.map((post) => (
             <div key={post._id} className="plant-post card mb-3 animate__animated animate__fadeIn">
+              <div className="card-header">
+                <span>
+                  Posted by: {(() => {
+                    const user = discoverUsers.find(u => u.firebaseId === post.userId);
+                    return user?.email || post.userId;  // Show email if exists, otherwise show userId
+                  })()}
+                  {following.includes(post.userId) && ' (Following)'}
+                </span>
+              </div>
               {/* Post Image */}
               <img
                 src={`data:${post.contentType};base64,${post.image}`}

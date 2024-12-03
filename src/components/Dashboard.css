@@ -88,7 +88,7 @@
 }
 
 .following-section {
-    width: 200px;
+    width: 250px;
     margin-right: 20px;
     background-color: #f8f9fa;
     padding: 15px;
@@ -96,7 +96,7 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     position: sticky;
     top: 70px;
-    height: calc(100vh - 90px);
+    max-height: calc(100vh - 90px);
     overflow-y: auto;
 }
 
@@ -107,10 +107,31 @@
 .following-section ul {
     list-style-type: none;
     padding: 0;
+    margin-bottom: 20px;
 }
 
 .following-section li {
-    margin-bottom: 5px;
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+    width: 100%;
+}
+
+.following-section li > div {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.text-truncate {
+    max-width: 150px;  /* Adjust this value as needed */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.me-2 {
+    margin-right: 0.5rem !important;
 }
 
 .plant-feed {
@@ -252,4 +273,20 @@
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-20px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+.following-section button {
+    white-space: nowrap;
+    margin-left: 10px;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid rgba(0,0,0,.125);
+    padding: 0.75rem 1.25rem;
+}
+
+.card-header span {
+    font-size: 0.9rem;
+    color: #666;
 }

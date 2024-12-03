@@ -2,6 +2,7 @@ import React, { useState } from "react"
 import { Card, Button, Alert, Container } from "react-bootstrap"
 import { useAuth } from "../contexts/AuthContext"
 import { Link, useNavigate } from "react-router-dom"
+import axios from "axios"
 
 export default function Settings() {
   const [error, setError] = useState("")
