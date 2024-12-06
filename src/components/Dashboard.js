@@ -347,14 +347,14 @@ export default function Dashboard() {
                         </Nav.Link>
 
                         {/* Marketplace Link */}
-                        <Nav.Link 
+                        {/* <Nav.Link 
                           as={Link} 
                           to="/marketplace" 
                           className={`navbar-text ${currentLocation.pathname === "/marketplace" ? "active" : ""}`} 
                           style={{ color: currentLocation.pathname === "/marketplace" ? "green" : "inherit" }}
                         >
                           Marketplace
-                        </Nav.Link>
+                        </Nav.Link> */}
                       </Nav>
 
                       {/* Profile Dropdown Menu */}
