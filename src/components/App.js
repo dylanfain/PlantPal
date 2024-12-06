@@ -5,6 +5,7 @@ import { Container, Card } from "react-bootstrap";
 import Dashboard from "./Dashboard";
 import Login from "./Login";
 import Signup from "./Signup";
+import Post from "./Post";
 import PrivateRoute from "./PrivateRoute";
 import ForgotPassword from "./ForgotPassword";
 import UpdateProfile from "./UpdateProfile";
@@ -69,6 +70,17 @@ function App() {
               <Card>
                 <Card.Body>
                   <PrivateRoute component={Settings} />
+                </Card.Body>
+              </Card>
+            </div>
+          </Container>
+        } />
+        <Route path="/post" element={
+          <Container className="d-flex align-items-center justify-content-center" style={{ minHeight: "100vh" }}>
+            <div className="w-100" style={{ maxWidth: "400px" }}>
+              <Card>
+                <Card.Body>
+                  <PrivateRoute component={Post} />
                 </Card.Body>
               </Card>
             </div>
