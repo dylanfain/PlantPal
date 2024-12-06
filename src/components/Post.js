@@ -68,12 +68,21 @@ export default function Post() {
     // Handle the image file change and create a preview URL
     const handleImageChange = (e) => {
         const selectedImage = e.target.files[0];
+        // Check if the selected file is a valid image type
+        if (selectedImage && !["image/jpeg", "image/png"].includes(selectedImage.type)) {
+            alert("Please select a JPG or PNG file.");
+            e.target.value = ""; // Reset the file input
+            return;
+        }
         setImage(selectedImage);
-
+    
         // Create a preview URL and store it in state
-        const previewURL = URL.createObjectURL(selectedImage);
-        setImagePreview(previewURL);
+        if (selectedImage) {
+            const previewURL = URL.createObjectURL(selectedImage);
+            setImagePreview(previewURL);
+        }
     };
+    
 
     return (
         <Container>
