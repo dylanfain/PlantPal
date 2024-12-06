@@ -11,6 +11,7 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 5000;
 
+
 app.use(cors());
 app.use(express.json());
 
@@ -69,7 +70,9 @@ app.get('/api/posts/:userId', async (req, res) => {
   const { userId } = req.params;
 
   try {
-    const posts = await Post.find({ userId }).sort({ createdAt: -1 });
+    const posts = await Post.find({ userId })
+      .sort({ createdAt: -1 })
+      .populate('comments'); 
 
     // Convert the binary image data to a base64 string for each post
     const postsWithBase64Images = posts.map((post) => {
@@ -91,32 +94,71 @@ app.get('/api/posts/:userId', async (req, res) => {
   }
 });
 
+app.put('/api/posts/:postId/like', async (req, res) => {
+    const { postId } = req.params;
+    const { userId } = req.body;
+  
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+  
+    try {
+      const post = await Post.findById(postId);
+  
+      if (!post) {
+        return res.status(404).json({ error: 'Post not found' });
+      }
+  
+      // Check if the user has already liked the post
+      const alreadyLiked = post.likedBy.includes(userId);
+  
+      if (alreadyLiked) {
+        // Unlike the post
+        post.likes -= 1;
+        post.likedBy = post.likedBy.filter((id) => id !== userId);
+      } else {
+        // Like the post
+        post.likes += 1;
+        post.likedBy.push(userId);
+      }
+  
+      await post.save();
+      res.status(200).json({ message: 'Like status updated', post });
+    } catch (error) {
+      console.error('Error updating like status:', error);
+      res.status(500).json({ error: 'Failed to update like status' });
+    }
+  });
+
 
 // Route to comment on a post - NOT WORKING YET
 app.post('/api/posts/:id/comment', async (req, res) => {
-  const { id } = req.params; // Post ID
-  const { text, author } = req.body; // Comment text and author ID
-
-  try {
-    // Create a new comment
-    const newComment = await Comment.create({ text, author });
-
-    // Find the post and add the comment to it
-    const post = await Post.findByIdAndUpdate(
-      id,
-      { $push: { comments: newComment._id } },
-      { new: true }
-    ).populate('comments');
-
-    if (!post) {
-      return res.status(404).json({ error: 'Post not found' });
+    const { id } = req.params; // Post ID
+    const { text, author } = req.body; // Comment text and author ID
+  
+    try {
+      // Ensure author is an ObjectId
+      const authorObjectId = author;
+  
+      // Create a new comment
+      const newComment = await Comment.create({ text, author: authorObjectId });
+  
+      // Find the post and add the comment to it
+      const post = await Post.findByIdAndUpdate(
+        id,
+        { $push: { comments: newComment._id } },
+        { new: true }
+      ).populate('comments');
+  
+      if (!post) {
+        return res.status(404).json({ error: 'Post not found' });
+      }
+  
+      res.status(200).json({ message: 'Comment added successfully', post });
+    } catch (error) {
+      res.status(500).json({ error: 'Error adding comment', details: error.message });
     }
-
-    res.status(200).json({ message: 'Comment added successfully', post });
-  } catch (error) {
-    res.status(500).json({ error: 'Error adding comment', details: error.message });
-  }
-});
+  });
 
 app.delete('/api/posts/:id', async (req, res) => {
   const { id } = req.params;

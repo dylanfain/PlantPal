@@ -42,13 +42,49 @@ const HomeContent = () => {
 
   // Like a post
   const handleLike = async (postId) => {
+    if (!userID) {
+      console.error('No userID found');
+      return;
+    }
+  
+    // Find the post in the current state
+    const postIndex = posts.findIndex((post) => post._id === postId);
+    if (postIndex === -1) {
+      console.error('Post not found in state');
+      return;
+    }
+  
+    // Get the current post and determine if the user has liked it
+    const post = posts[postIndex];
+    const userLiked = post.likedBy?.includes(userID);
+  
+    // Optimistically update the UI
+    const updatedPosts = [...posts];
+    updatedPosts[postIndex] = {
+      ...post,
+      likes: userLiked ? post.likes - 1 : post.likes + 1,
+      likedBy: userLiked
+        ? post.likedBy.filter((id) => id !== userID)
+        : [...(post.likedBy || []), userID],
+    };
+    setPosts(updatedPosts);
+  
+    // Send the like/unlike request to the backend
     try {
-      await axios.put(`/api/posts/${postId}/like`);
-      setPosts(posts.map((post) =>
-        post._id === postId ? { ...post, likes: post.likes + 1 } : post
-      ));
+      const response = await axios.put(`http://localhost:5000/api/posts/${postId}/like`, {
+        userId: userID,
+      });
+  
+      // Confirm backend response and update state if necessary
+      const updatedPost = response.data;
+      setPosts((prevPosts) =>
+        prevPosts.map((p) => (p._id === updatedPost._id ? updatedPost : p))
+      );
     } catch (error) {
-      console.error('Error liking post:', error);
+      console.error('Error liking/unliking post:', error.response?.data || error.message);
+  
+      // Revert optimistic update in case of error
+      setPosts(posts);
     }
   };
 
@@ -68,19 +104,73 @@ const HomeContent = () => {
   };
 
   // Submit comment
-  const submitComment = async (postId, newComment, userId) => {
+  const submitComment = async (postId, newCommentText, userId) => {
+    if (!userId) {
+      console.error('No userId found');
+      return;
+    }
+  
+    // Find the post in the current state
+    const postIndex = posts.findIndex((post) => post._id === postId);
+    if (postIndex === -1) {
+      console.error('Post not found in state');
+      return;
+    }
+  
+    const post = posts[postIndex];
+  
+    // Preserve the image in the post state
+    const preservedImage = post.image;
+  
+    // Create a temporary comment object for optimistic update
+    const tempComment = {
+      _id: `temp-${Date.now()}`, // Temporary ID for optimistic UI
+      text: newCommentText,
+      author: userId,
+      createdAt: new Date().toISOString(), // Mock timestamp
+    };
+  
+    // Optimistically add the comment to the state
+    const updatedPosts = [...posts];
+    updatedPosts[postIndex] = {
+      ...post,
+      comments: [...post.comments, tempComment],
+    };
+    setPosts(updatedPosts);
+  
     try {
+      // Send the comment to the backend
       const response = await axios.post(`http://localhost:5000/api/posts/${postId}/comment`, {
-        text: newComment,
-        author: userId
+        text: newCommentText,
+        author: userId,
       });
   
-      console.log(response.data.message); // "Comment added successfully"
-      return response.data.post; // The updated post with comments
+      const updatedPost = response.data.post;
+  
+      // Restore the image and update the state with the backend response
+      setPosts((prevPosts) =>
+        prevPosts.map((p) =>
+          p._id === updatedPost._id
+            ? { ...updatedPost, image: preservedImage }
+            : p
+        )
+      );
     } catch (error) {
-      console.error('Error adding comment:', error);
+      console.error('Error adding comment:', error.response?.data || error.message);
+  
+      // Revert the optimistic update in case of an error
+      setPosts((prevPosts) => {
+        const revertedPosts = [...prevPosts];
+        revertedPosts[postIndex] = {
+          ...post,
+          comments: post.comments.filter((comment) => comment._id !== tempComment._id),
+        };
+        return revertedPosts;
+      });
     }
   };
+  
+  
 
   if (loading) return <div>Loading...</div>;
 
@@ -129,8 +219,11 @@ const HomeContent = () => {
                 <p className="card-text">{post.caption}</p>
 
                 {/* Like Button */}
-                <button className="btn btn-success" onClick={() => handleLike(post._id)}>
-                  Like ({post.likes})
+                <button
+                  className={`btn ${post.likedBy.includes(userID) ? 'btn-danger' : 'btn-success'}`} // Use user ID dynamically
+                  onClick={() => handleLike(post._id)}
+                >
+                  {post.likedBy.includes(userID) ? 'Unlike' : 'Like'} ({post.likes})
                 </button>
 
                 {/* Comment Button */}
@@ -172,7 +265,14 @@ const HomeContent = () => {
                   />
                   <button
                     className="btn btn-success mt-2"
-                    onClick={() => submitComment(post._id)}
+                    onClick={() => {
+                      if (newComment.trim()) {
+                        submitComment(post._id, newComment.trim(), userID);
+                        setNewComment(''); // Clear the textarea after submitting
+                      } else {
+                        alert('Comment cannot be empty');
+                      }
+                    }}
                   >
                     Submit
                   </button>
