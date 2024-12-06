@@ -6,7 +6,12 @@ To begin our project as a developer, you will need to clone our project and inst
 ```ps1
 npm install
 ```
-and begin the program by:
+start the server with:
+```ps1
+cd server
+node index.js
+```
+and begin the program by returning to the root directory and runnning:
 ```ps1
 npm start
 ```
